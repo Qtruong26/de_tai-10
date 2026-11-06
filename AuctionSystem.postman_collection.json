@@ -1,0 +1,170 @@
+{
+  "info": {
+    "name": "Hệ Thống Đấu Giá Trực Tuyến - Đề Tài 10",
+    "_postman_id": "auction-system-de-tai-10",
+    "description": "Bộ sưu tập API kiểm thử hệ thống đấu giá trực tuyến (REST API, gRPC, RabbitMQ, SignalR)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Lấy danh sách tất cả phiên đấu giá",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/auctions",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["auctions"]
+        }
+      }
+    },
+    {
+      "name": "2. Lấy danh sách phiên đang mở (Active)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/auctions?status=Active",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["auctions"],
+          "query": [
+            {
+              "key": "status",
+              "value": "Active"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "3. Lấy chi tiết phiên đấu giá theo ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/auctions/auc-101",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["auctions", "auc-101"]
+        }
+      }
+    },
+    {
+      "name": "4. Tạo phiên đấu giá mới",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Tai nghe Sony WH-1000XM5 Black\",\n  \"description\": \"Chống ồn đỉnh cao, like new fullbox chính hãng Sony VN\",\n  \"startingPrice\": 6500000,\n  \"minStep\": 200000,\n  \"durationMinutes\": 30,\n  \"sellerName\": \"SonyCenter Saigon\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/auctions",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["auctions"]
+        }
+      }
+    },
+    {
+      "name": "5. Gửi mức giá mới (Hợp lệ)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"bidderName\": \"Alice\",\n  \"amount\": 28500000\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/auctions/auc-101/bids",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["auctions", "auc-101", "bids"]
+        }
+      }
+    },
+    {
+      "name": "6. Gửi mức giá mới (Không hợp lệ - Test gRPC Validator)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"bidderName\": \"Bob\",\n  \"amount\": 28100000\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/auctions/auc-101/bids",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["auctions", "auc-101", "bids"]
+        }
+      }
+    },
+    {
+      "name": "7. Lấy lịch sử trả giá của phiên",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/auctions/auc-101/bids",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["auctions", "auc-101", "bids"]
+        }
+      }
+    },
+    {
+      "name": "8. Tra cứu nhật ký kiểm toán (Audit Worker)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/auctions/auc-101/audits",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["auctions", "auc-101", "audits"]
+        }
+      }
+    },
+    {
+      "name": "9. Kết thúc phiên đấu giá và chốt người thắng",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/auctions/auc-101/end",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["auctions", "auc-101", "end"]
+        }
+      }
+    }
+  ]
+}
+

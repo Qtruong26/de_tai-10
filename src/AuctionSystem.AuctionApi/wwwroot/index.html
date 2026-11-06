@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Đấu Giá Trực Tuyến - Đề Tài 10</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- SignalR CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+    <!-- Canvas Confetti for Celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                    <i class="fa-solid fa-gavel text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-amber-400 bg-clip-text text-transparent">
+                        Hệ Thống Đấu Giá Trực Tuyến
+                    </h1>
+                    <p class="text-xs text-slate-400">Đề tài 10 &bull; REST API &bull; gRPC &bull; RabbitMQ &bull; SignalR</p>
+                </div>
+            </div>
+
+            <!-- Architecture Status Pills -->
+            <div class="hidden lg:flex items-center space-x-2 text-xs">
+                <span class="px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> REST API: 5000
+                </span>
+                <span class="px-2.5 py-1 rounded-full bg-blue-950 text-blue-400 border border-blue-800 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span> gRPC Validator: 5001
+                </span>
+                <span class="px-2.5 py-1 rounded-full bg-amber-950 text-amber-400 border border-amber-800 flex items-center gap-1.5">
+                    <i class="fa-solid fa-envelope-open-text"></i> RabbitMQ Events
+                </span>
+                <span id="signalrStatusPill" class="px-2.5 py-1 rounded-full bg-purple-950 text-purple-400 border border-purple-800 flex items-center gap-1.5">
+                    <span id="signalrDot" class="w-2 h-2 rounded-full bg-purple-500"></span> SignalR: Connected
+                </span>
+            </div>
+
+            <!-- Action Buttons & Current Bidder -->
+            <div class="flex items-center space-x-2">
+                <a href="/swagger" target="_blank" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition flex items-center gap-1.5" title="Mở tài liệu API Swagger">
+                    <i class="fa-solid fa-book text-emerald-400"></i> <span class="hidden sm:inline">Swagger API</span>
+                </a>
+                <button onclick="resetDemoData()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition flex items-center gap-1.5" title="Đặt lại các phiên đấu giá mẫu ban đầu">
+                    <i class="fa-solid fa-rotate-left text-amber-400"></i> <span class="hidden sm:inline">Reset Demo</span>
+                </button>
+                <div class="flex items-center bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-700">
+                    <span class="text-xs text-slate-400 mr-2"><i class="fa-solid fa-user text-indigo-400"></i> Tôi là:</span>
+                    <input id="currentBidderInput" type="text" value="NguyenVanA" 
+                           class="bg-transparent text-sm font-semibold text-amber-400 focus:outline-none w-28" />
+                </div>
+                <button onclick="openCreateModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-md shadow-indigo-600/30">
+                    <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Tạo Phiên</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Auction List (4 cols) -->
+        <section class="lg:col-span-4 flex flex-col space-y-4">
+            <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-4 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <h2 class="font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-list-ul text-amber-400"></i> Các Phiên Đấu Giá
+                    </h2>
+                    <span id="auctionCountBadge" class="bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full">0</span>
+                </div>
+                <button onclick="loadAuctions()" class="text-xs text-slate-400 hover:text-white transition flex items-center gap-1">
+                    <i class="fa-solid fa-rotate-right"></i> Làm mới
+                </button>
+            </div>
+
+            <!-- Filter tabs -->
+            <div class="flex rounded-lg bg-slate-800 p-1 border border-slate-700 text-xs font-medium">
+                <button onclick="setFilter('ALL')" id="tabALL" class="flex-1 py-1.5 rounded-md text-center bg-indigo-600 text-white transition">Tất cả</button>
+                <button onclick="setFilter('Active')" id="tabActive" class="flex-1 py-1.5 rounded-md text-center text-slate-400 hover:text-white transition">Đang mở</button>
+                <button onclick="setFilter('Ended')" id="tabEnded" class="flex-1 py-1.5 rounded-md text-center text-slate-400 hover:text-white transition">Đã kết thúc</button>
+            </div>
+
+            <!-- Auction Cards Scroll Container -->
+            <div id="auctionListContainer" class="flex flex-col space-y-3 overflow-y-auto max-h-[720px] pr-1">
+                <!-- Cards dynamically loaded -->
+                <div class="text-center py-12 text-slate-500">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p>Đang tải danh sách phiên đấu giá...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Active Auction Room & Real-time Bidding (8 cols) -->
+        <section class="lg:col-span-8 flex flex-col space-y-6">
+
+            <!-- Active Room Header Card -->
+            <div id="auctionDetailCard" class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                <!-- Card content injected by JS -->
+                <div class="text-center py-20 text-slate-400">
+                    <i class="fa-solid fa-hand-pointer text-4xl mb-3 text-indigo-400 animate-bounce"></i>
+                    <p class="text-lg font-medium">Chọn một phiên đấu giá ở cột bên trái để vào phòng trực tiếp</p>
+                    <p class="text-xs text-slate-500 mt-1">Hệ thống sẽ kết nối SignalR group để nhận biến động giá tức thì</p>
+                </div>
+            </div>
+
+            <!-- Lower Section: Real-time Live Bid Log & Audit Logs Tabs -->
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl overflow-hidden shadow-xl">
+                <div class="border-b border-slate-700 flex justify-between items-center px-6 py-3 bg-slate-800/40">
+                    <div class="flex space-x-4">
+                        <button onclick="switchLogTab('bids')" id="tabBidLog" class="text-sm font-bold text-amber-400 border-b-2 border-amber-400 pb-1 flex items-center gap-2">
+                            <i class="fa-solid fa-bolt"></i> Diễn Biến Trả Giá Realtime (SignalR)
+                        </button>
+                        <button onclick="switchLogTab('audit')" id="tabAuditLog" class="text-sm font-medium text-slate-400 hover:text-white border-b-2 border-transparent pb-1 flex items-center gap-2">
+                            <i class="fa-solid fa-shield-halved text-emerald-400"></i> Nhật Ký Kiểm Toán (Audit Worker)
+                        </button>
+                    </div>
+                    <span id="logCounter" class="text-xs text-slate-400 bg-slate-700/60 px-2.5 py-0.5 rounded-full">0 lượt</span>
+                </div>
+
+                <!-- Bid Log Table -->
+                <div id="bidsTableContainer" class="p-4 overflow-y-auto max-h-[360px]">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="text-xs uppercase text-slate-400 border-b border-slate-700 pb-2">
+                                <th class="pb-2">Thời gian</th>
+                                <th class="pb-2">Người trả giá</th>
+                                <th class="pb-2 text-right">Mức giá</th>
+                                <th class="pb-2 text-center">Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bidLogBody" class="divide-y divide-slate-700/50">
+                            <tr>
+                                <td colspan="4" class="text-center py-8 text-slate-500">Chưa có lượt trả giá nào.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Audit Log Table (Hidden by default) -->
+                <div id="auditTableContainer" class="p-4 overflow-y-auto max-h-[360px] hidden">
+                    <div id="auditLogList" class="flex flex-col space-y-2">
+                        <div class="text-center py-8 text-slate-500">Chưa có bản ghi kiểm toán nào được tải.</div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Create Auction Modal -->
+    <div id="createModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
+            <button onclick="closeCreateModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-plus-circle text-indigo-400"></i> Tạo Phiên Đấu Giá Mới
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">Nhập thông tin sản phẩm và thiết lập bước giá tối thiểu</p>
+
+            <form id="createAuctionForm" onsubmit="handleCreateAuction(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-300 mb-1">Tên sản phẩm *</label>
+                    <input id="inputTitle" type="text" required placeholder="Ví dụ: iPad Pro M4 13 inch"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-300 mb-1">Mô tả sản phẩm</label>
+                    <textarea id="inputDescription" rows="2" placeholder="Tình trạng, phụ kiện, cam kết..."
+                              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-slate-300 mb-1">Giá khởi điểm (VND) *</label>
+                        <input id="inputStartingPrice" type="number" required min="1000" step="1000" value="10000000"
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-slate-300 mb-1">Bước giá tối thiểu (VND) *</label>
+                        <input id="inputMinStep" type="number" required min="1000" step="1000" value="200000"
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-slate-300 mb-1">Thời lượng (Phút)</label>
+                        <input id="inputDuration" type="number" min="1" max="1440" value="5"
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-slate-300 mb-1">Người đăng bán</label>
+                        <input id="inputSeller" type="text" value="Cửa hàng công nghệ"
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end space-x-3">
+                    <button type="button" onclick="closeCreateModal()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm font-medium transition">Hủy</button>
+                    <button type="submit" class="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition flex items-center gap-2 shadow-lg shadow-indigo-600/30">
+                        <i class="fa-solid fa-check"></i> Xác Nhận Tạo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+        <div id="toastBox" class="bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 max-w-md">
+            <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+            <div>
+                <p id="toastTitle" class="text-sm font-semibold">Thông báo</p>
+                <p id="toastMsg" class="text-xs text-slate-300">Nội dung thông báo</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-800 py-3 text-center text-xs text-slate-500">
+        Đề tài 10 - Hệ thống đấu giá trực tuyến &bull; Microservices: Auction API (REST + SignalR) &bull; Bid Validation (gRPC) &bull; RabbitMQ &bull; Audit Worker
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

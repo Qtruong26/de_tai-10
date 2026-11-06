@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # RabbitMQ Message Broker with Web Management UI
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: auction_rabbitmq
+    ports:
+      - "5672:5672"     # AMQP protocol
+      - "15672:15672"   # Management Web Dashboard (guest/guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # gRPC Bid Validation Service
+  bid-validation-service:
+    build:
+      context: .
+      dockerfile: src/AuctionSystem.BidValidationService/Dockerfile
+    container_name: auction_grpc_validator
+    ports:
+      - "5001:5001"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5001
+
+  # Auction API (REST + SignalR Hub + Static UI)
+  auction-api:
+    build:
+      context: .
+      dockerfile: src/AuctionSystem.AuctionApi/Dockerfile
+    container_name: auction_api
+    ports:
+      - "5000:5000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      bid-validation-service:
+        condition: service_started
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5000
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/auction_database.db
+      - GrpcServices__BidValidationUrl=http://bid-validation-service:5001
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__Port=5672
+    volumes:
+      - auction-data:/app/data
+
+  # Audit Worker (RabbitMQ Event Consumer)
+  audit-worker:
+    build:
+      context: .
+      dockerfile: src/AuctionSystem.AuditWorker/Dockerfile
+    container_name: auction_audit_worker
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/auction_database.db
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__Port=5672
+    volumes:
+      - auction-data:/app/data
+
+volumes:
+  auction-data:
+

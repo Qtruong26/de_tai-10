@@ -1,0 +1,28 @@
+## .NET / Visual Studio
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+## Test & Coverage
+TestResults/
+[Tt]est[Rr]esult*/
+*.trx
+coverage/
+
+## OS generated files
+.DS_Store
+Thumbs.db

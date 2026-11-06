@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package auction.validation;
+
+option csharp_namespace = "AuctionSystem.Shared.Protos";
+
+service BidValidation {
+  // RPC to validate a proposed bid against auction business rules
+  rpc ValidateBid (ValidateBidRequest) returns (ValidateBidResponse);
+}
+
+message ValidateBidRequest {
+  string auction_id = 1;
+  string bidder_name = 2;
+  double bid_amount = 3;
+  double current_price = 4;
+  double starting_price = 5;
+  double min_step = 6;
+  int64 start_time_epoch = 7;
+  int64 end_time_epoch = 8;
+  string status = 9;
+  string current_highest_bidder = 10;
+}
+
+message ValidateBidResponse {
+  bool is_valid = 1;
+  string error_code = 2;
+  string error_message = 3;
+  double suggested_min_bid = 4;
+}
+
