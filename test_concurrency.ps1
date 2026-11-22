@@ -82,3 +82,4 @@ $audits | Format-Table eventType, bidderName, amount, details
 Write-Host "==================================================================" -ForegroundColor Cyan
 Write-Host " KIEM THU TUONG TRANH HOAN TAT! DU LIEU HOAN TOAN NHAT QUAN!" -ForegroundColor Green
 Write-Host "==================================================================" -ForegroundColor Cyan
+

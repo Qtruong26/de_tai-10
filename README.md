@@ -5,6 +5,7 @@ Hệ thống đấu giá trực tuyến xây dựng theo kiến trúc Microservi
 - **Bid Validation Service (gRPC Service)**: Dịch vụ độc lập kiểm tra tính hợp lệ của mức giá trả qua giao thức nhị phân gRPC tốc độ cao.
 - **RabbitMQ (Message Broker)**: Phân phối bất đồng bộ các sự kiện `BidAcceptedEvent` và `AuctionEndedEvent` tới **Auction Hub** (SignalR) và **Audit Worker**.
 - **Audit Worker**: Background worker độc lập lắng nghe sự kiện từ RabbitMQ để ghi nhật ký kiểm toán và lưu lịch sử phiên đấu giá vào cơ sở dữ liệu.
+- **Console Client (`AuctionSystem.Client`)**: Ứng dụng Console C# tương tác 2 chiều: vừa duy trì kết nối SignalR nhận thông báo realtime (`On<...>`), vừa cung cấp menu gọi trực tiếp các REST API (`HttpClient` GET, POST, PUT), hiển thị rõ ràng mã HTTP (200, 201, 400, 404, 409).
 - **Bidder Web Client**: Giao diện người dùng trực quan, hỗ trợ phòng đấu giá thời gian thực với đồng hồ đếm ngược, đẩy giá real-time và thông báo người chiến thắng.
 
 ---
@@ -69,8 +70,10 @@ d:\đề tài 10\
 │   │   ├── EventHandlers\SignalREventHandlers.cs # Consumer RabbitMQ đẩy dữ liệu qua SignalR
 │   │   ├── BackgroundServices\                   # Worker tự động kết thúc phiên hết hạn
 │   │   └── wwwroot\                              # Single Page Web Dashboard (HTML/JS/CSS)
-│   └── AuctionSystem.AuditWorker\                # Worker độc lập ghi nhật ký kiểm toán
-│       └── Worker.cs                             # Lắng nghe RabbitMQ queue audit_worker_queue
+│   ├── AuctionSystem.AuditWorker\                # Worker độc lập ghi nhật ký kiểm toán
+│   │   └── Worker.cs                             # Lắng nghe RabbitMQ queue audit_worker_queue
+│   └── AuctionSystem.Client\                     # Console Client tương tác 2 chiều (SignalR + REST)
+│       └── Program.cs                            # Menu console, HttpClient, HubConnection
 ├── tests\
 │   └── AuctionSystem.Tests\                      # Bộ kiểm thử tự động xUnit (11/11 Passed)
 │       ├── BidValidationServiceTests.cs          # Test nghiệp vụ gRPC Validator
@@ -85,15 +88,19 @@ d:\đề tài 10\
 
 ## 3. Danh Sách API RESTful (Port 5000)
 
-| Phương thức | Đường dẫn API | Mô tả |
-|---|---|---|
-| `POST` | `/auctions` | Tạo một phiên đấu giá mới với giá sàn, bước giá và thời lượng |
-| `GET` | `/auctions` | Lấy danh sách tất cả các phiên (hỗ trợ lọc `?status=Active` hoặc `?status=Ended`) |
-| `GET` | `/auctions/{id}` | Lấy chi tiết thông tin phiên, thời gian còn lại, người giữ giá hiện tại |
-| `POST` | `/auctions/{id}/bids` | **Gửi lượt trả giá mới**: Tự động gọi gRPC kiểm tra -> Lưu DB -> Phát sự kiện RabbitMQ |
-| `GET` | `/auctions/{id}/bids` | Lấy danh sách lịch sử trả giá của phiên đấu giá |
-| `GET` | `/auctions/{id}/audits` | Tra cứu toàn bộ lịch sử kiểm toán của phiên do Audit Worker ghi lại |
-| `POST` | `/auctions/{id}/end` | Kết thúc ngay phiên đấu giá, chốt người chiến thắng (phục vụ demo nhanh) |
+*(Hỗ trợ cả hai tiền tố `/api/auctions` và `/auctions`)*
+
+| Phương thức | Đường dẫn API | Mã phản hồi HTTP | Mô tả |
+|---|---|---|---|
+| `GET` | `/api/auctions` | `200 OK` | Lấy danh sách tất cả các phiên đấu giá (trả `[]` khi chưa có) |
+| `GET` | `/api/auctions/{id}` | `200 OK`, `404 Not Found` | Lấy chi tiết thông tin phiên theo ID |
+| `POST` | `/api/auctions` | `201 Created`, `400 Bad Request` | Tạo phiên mới (hợp lệ trả 201 + URI Location + phát SignalR `AuctionCreated`) |
+| `PUT` | `/api/auctions/{id}` | `200 OK`, `404 Not Found`, `400 Bad Request` | Cập nhật thông tin phiên (phát SignalR `AuctionUpdated`) - *Điểm nâng cao D1 & D2* |
+| `POST` | `/api/auctions/{id}/bids` | `200 OK`, `400`, `404`, `409 Conflict` | Gửi lượt trả giá mới (gọi gRPC kiểm tra -> RabbitMQ -> SignalR `ReceiveBid`) |
+| `GET` | `/api/auctions/{id}/bids` | `200 OK` | Lấy danh sách lịch sử trả giá của phiên đấu giá |
+| `GET` | `/api/auctions/{id}/audits` | `200 OK` | Tra cứu toàn bộ lịch sử kiểm toán của phiên do Audit Worker ghi lại |
+| `POST` | `/api/auctions/{id}/end` | `200 OK`, `404`, `400` | Kết thúc ngay phiên đấu giá, chốt người chiến thắng (phát SignalR `AuctionEnded`) |
+| `POST` | `/api/auctions/reset-demo` | `200 OK` | Khôi phục cơ sở dữ liệu về các phiên mẫu ban đầu để tiện demo |
 
 ---
 

@@ -3,6 +3,7 @@
     <Project Path="src/AuctionSystem.AuctionApi/AuctionSystem.AuctionApi.csproj" />
     <Project Path="src/AuctionSystem.AuditWorker/AuctionSystem.AuditWorker.csproj" />
     <Project Path="src/AuctionSystem.BidValidationService/AuctionSystem.BidValidationService.csproj" />
+    <Project Path="src/AuctionSystem.Client/AuctionSystem.Client.csproj" />
     <Project Path="src/AuctionSystem.Shared/AuctionSystem.Shared.csproj" />
   </Folder>
   <Folder Name="/tests/">

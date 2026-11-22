@@ -20,6 +20,14 @@ public class CreateBidRequest
     public decimal Amount { get; set; }
 }
 
+public class UpdateAuctionRequest
+{
+    public string? Title { get; set; }
+    public string? Description { get; set; }
+    public decimal? MinStep { get; set; }
+    public string? Status { get; set; }
+}
+
 public class AuctionResponse
 {
     public string Id { get; set; } = string.Empty;

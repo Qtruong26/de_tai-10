@@ -25,8 +25,11 @@ Start-Sleep -Seconds 2
 Write-Host "==================================================================" -ForegroundColor Cyan
 Write-Host " TAT CA CAC DICH VU DA SAN SANG!" -ForegroundColor Yellow
 Write-Host " -> Dashboard Web: http://localhost:5000" -ForegroundColor White
-Write-Host " -> Swagger/REST: http://localhost:5000/auctions" -ForegroundColor White
+Write-Host " -> Swagger UI:    http://localhost:5000/swagger" -ForegroundColor White
+Write-Host " -> REST Endpoints:http://localhost:5000/api/auctions" -ForegroundColor White
+Write-Host " -> SignalR Hub:   http://localhost:5000/hubs/auction" -ForegroundColor White
 Write-Host " -> gRPC Endpoint: http://localhost:5001" -ForegroundColor White
+Write-Host " -> Console Client:dotnet run --project src/AuctionSystem.Client/AuctionSystem.Client.csproj" -ForegroundColor Yellow
 Write-Host "==================================================================" -ForegroundColor Cyan
 
 # Open browser

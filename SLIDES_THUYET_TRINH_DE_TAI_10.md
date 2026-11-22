@@ -142,3 +142,4 @@ POST /auctions/reset-demo - Khôi phục dữ liệu mẫu ban đầu để demo
   - Có đầy đủ tài liệu hướng dẫn (`README.md`, `BAO_CAO_DE_TAI_10.md`).
   - Có script chạy 1-click (`run.ps1`) và container hóa (`docker-compose.yml`).
   - Giao diện người dùng thời gian thực đẹp mắt, trực quan và tiện dụng.
+

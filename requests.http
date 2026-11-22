@@ -1,0 +1,110 @@
+@baseUrl = http://localhost:5000
+
+### 1. [A1 - 200 OK] Lấy danh sách tất cả phiên đấu giá
+GET {{baseUrl}}/api/auctions
+Accept: application/json
+
+### 2. [A2 - 200 OK] Lấy chi tiết phiên đấu giá hợp lệ theo ID
+GET {{baseUrl}}/api/auctions/auc-001
+Accept: application/json
+
+### 3. [A2 - 404 Not Found] Lấy chi tiết phiên đấu giá với ID không tồn tại
+GET {{baseUrl}}/api/auctions/invalid-id-9999
+Accept: application/json
+
+### 4. [A3 - 201 Created] Tạo phiên đấu giá mới thành công (Trả 201 Created + phát SignalR AuctionCreated)
+POST {{baseUrl}}/api/auctions
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Bàn phím cơ Custom Keychron Q1 Pro",
+  "description": "Bàn phím không dây vỏ nhôm CNC, switch Gateron Banana",
+  "startingPrice": 4200000,
+  "minStep": 100000,
+  "durationMinutes": 15,
+  "sellerName": "ShopGearVN"
+}
+
+### 5. [A4 - 400 Bad Request] Kiểm tra dữ liệu: Tiêu đề rỗng (Không thêm, không phát SignalR)
+POST {{baseUrl}}/api/auctions
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "   ",
+  "startingPrice": 1000000,
+  "minStep": 50000,
+  "durationMinutes": 10
+}
+
+### 6. [A4 - 400 Bad Request] Kiểm tra dữ liệu: Giá khởi điểm <= 0
+POST {{baseUrl}}/api/auctions
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Tai nghe Sony XM5",
+  "startingPrice": -100000,
+  "minStep": 50000,
+  "durationMinutes": 10
+}
+
+### 7. [D1 - 200 OK] Nâng cao: PUT cập nhật thông tin phiên đấu giá (Phát SignalR AuctionUpdated)
+PUT {{baseUrl}}/api/auctions/auc-001
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "iPhone 15 Pro Max 256GB Titan Tự Nhiên (Đã cập nhật)",
+  "description": "Hàng chính hãng VN/A, bảo hành 12 tháng, pin 100%",
+  "minStep": 300000
+}
+
+### 8. [D1 - 404 Not Found] Nâng cao: PUT cập nhật phiên đấu giá không tồn tại
+PUT {{baseUrl}}/api/auctions/invalid-auction-id
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Sản phẩm không tồn tại",
+  "minStep": 50000
+}
+
+### 9. [200 OK] Đặt giá hợp lệ (gRPC BidValidationService -> RabbitMQ -> SignalR ReceiveBid)
+POST {{baseUrl}}/api/auctions/auc-001/bids
+Content-Type: application/json
+Accept: application/json
+
+{
+  "bidderName": "TranVanB",
+  "amount": 25500000
+}
+
+### 10. [400 Bad Request] Đặt giá thất bại do không đủ bước giá hoặc thấp hơn giá hiện tại
+POST {{baseUrl}}/api/auctions/auc-001/bids
+Content-Type: application/json
+Accept: application/json
+
+{
+  "bidderName": "LeVanC",
+  "amount": 20000000
+}
+
+### 11. [404 Not Found] Đặt giá cho phiên không tồn tại
+POST {{baseUrl}}/api/auctions/invalid-auc-id/bids
+Content-Type: application/json
+Accept: application/json
+
+{
+  "bidderName": "KhachVangLai",
+  "amount": 50000000
+}
+
+### 12. [200 OK] Kết thúc phiên đấu giá ngay lập tức (phát SignalR AuctionEnded)
+POST {{baseUrl}}/api/auctions/auc-001/end
+Accept: application/json
+
+### 13. [200 OK] Khôi phục toàn bộ dữ liệu mẫu ban đầu
+POST {{baseUrl}}/api/auctions/reset-demo
+Accept: application/json

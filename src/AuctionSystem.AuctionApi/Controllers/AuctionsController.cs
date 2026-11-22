@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using AuctionSystem.AuctionApi.Data;
+using AuctionSystem.AuctionApi.Hubs;
 using AuctionSystem.Shared.Data;
 using AuctionSystem.Shared.DTOs;
 using AuctionSystem.Shared.EventBus;
@@ -12,23 +14,27 @@ namespace AuctionSystem.AuctionApi.Controllers;
 
 [ApiController]
 [Route("auctions")]
+[Route("api/auctions")]
 public class AuctionsController : ControllerBase
 {
     private readonly AuctionDbContext _db;
     private readonly BidValidation.BidValidationClient _bidValidator;
     private readonly IEventBus _eventBus;
     private readonly ILogger<AuctionsController> _logger;
+    private readonly IHubContext<AuctionHub>? _hubContext;
 
     public AuctionsController(
         AuctionDbContext db,
         BidValidation.BidValidationClient bidValidator,
         IEventBus eventBus,
-        ILogger<AuctionsController> logger)
+        ILogger<AuctionsController> logger,
+        IHubContext<AuctionHub>? hubContext = null)
     {
         _db = db;
         _bidValidator = bidValidator;
         _eventBus = eventBus;
         _logger = logger;
+        _hubContext = hubContext;
     }
 
     /// <summary>
@@ -77,7 +83,79 @@ public class AuctionsController : ControllerBase
 
         _logger.LogInformation("[REST API] Created Auction '{Title}' (ID: {Id})", auction.Title, auction.Id);
 
-        return CreatedAtAction(nameof(GetAuctionById), new { id = auction.Id }, MapToResponse(auction));
+        var response = MapToResponse(auction);
+
+        // B2. Phát sự kiện SignalR AuctionCreated tới tất cả kết nối SignalR đang hoạt động
+        if (_hubContext != null)
+        {
+            await _hubContext.Clients.All.SendAsync("AuctionCreated", response);
+        }
+
+        return CreatedAtAction(nameof(GetAuctionById), new { id = auction.Id }, response);
+    }
+
+    /// <summary>
+    /// PUT /api/auctions/{id} - Cập nhật thông tin phiên đấu giá (Đạt điểm nâng cao D1 & D2)
+    /// </summary>
+    [HttpPut("{id}")]
+    public async Task<ActionResult<AuctionResponse>> UpdateAuction(string id, [FromBody] UpdateAuctionRequest request)
+    {
+        var auction = await _db.Auctions
+            .Include(a => a.Bids)
+            .FirstOrDefaultAsync(a => a.Id == id);
+
+        if (auction == null)
+        {
+            return NotFound(new { message = $"Không tìm thấy phiên đấu giá với ID '{id}'." });
+        }
+
+        if (auction.Status == AuctionStatus.Ended)
+        {
+            return BadRequest(new { message = "Không thể chỉnh sửa phiên đấu giá đã kết thúc." });
+        }
+
+        if (request.Title != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Title))
+            {
+                return BadRequest(new { message = "Tiêu đề không được để trống." });
+            }
+            auction.Title = request.Title.Trim();
+        }
+
+        if (request.Description != null)
+        {
+            auction.Description = request.Description;
+        }
+
+        if (request.MinStep.HasValue)
+        {
+            if (request.MinStep.Value <= 0)
+            {
+                return BadRequest(new { message = "Bước giá tối thiểu phải lớn hơn 0." });
+            }
+            auction.MinStep = request.MinStep.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Status) && Enum.TryParse<AuctionStatus>(request.Status, true, out var parsedStatus))
+        {
+            auction.Status = parsedStatus;
+        }
+
+        await _db.SaveChangesAsync();
+
+        var updatedResponse = MapToResponse(auction);
+
+        // D2. Thông báo SignalR sau khi cập nhật tới tất cả kết nối
+        if (_hubContext != null)
+        {
+            await _hubContext.Clients.All.SendAsync("AuctionUpdated", updatedResponse);
+            await _hubContext.Clients.Group(id).SendAsync("AuctionUpdated", updatedResponse);
+        }
+
+        _logger.LogInformation("[REST API] Updated Auction '{Title}' (ID: {Id})", auction.Title, auction.Id);
+
+        return Ok(updatedResponse);
     }
 
     /// <summary>
